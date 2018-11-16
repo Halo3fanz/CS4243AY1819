@@ -36,6 +36,9 @@ for a = 1: 2
     
    filename = filelist(a, 1);
    filename = filename{1};
-   file = readtable(filename, 'ReadVariableNames', false);
+   baseName = filename(1:find(filename=='.')-1);
+   baseName = strcat(baseName, '.csv');
+   fullfileName = fullfile('C:\Users\Halo3\OneDrive\CS4243\Matlab\Project\CS4243\Annotation\Annotation', baseName);
+   file = readtable(fullfileName, 'ReadVariableNames', false);
     
 end
