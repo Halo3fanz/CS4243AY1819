@@ -7,8 +7,9 @@ t1 = [1.3305621037591506e-01; -2.5319578738559911e-01; 2.2444637695699150e+00];
 calibration_matrix_1 = [8.7014531487461625e+02 0 9.4942001822880479e+02;
     0 8.7014531487461625e+02 4.8720049852775117e+02;
     0 0 1];
-temp = [R1(1,1) R1(1,2), t1(1); R1(2, 1) R1(2, 2) t1(2); R1(3, 1) R1(3, 2) t1(3)];
-H_1 = dot(calibration_matrix_1, temp)
+i1 = R1(1, :);
+j1 = R1(2, :);
+k1 = R1(3, :);
 camPose1 = -inv(R1) * t1;
 
 % Camera 2
@@ -19,6 +20,9 @@ t2 = [-4.2633372670025989e-02; -3.5441906393933242e-01; 2.2750378317324982e+00];
 calibration_matrix_2 = [8.9334367240024267e+02 0 9.4996816131377727e+02;
     0 8.9334367240024267e+02 5.4679562177577259e+02;
     0 0 1];
+i2 = R2(1, :);
+j2 = R2(2, :);
+k2 = R2(3, :);
 camPose1 = -inv(R2) * t2;
 
 % Camera 3
@@ -29,6 +33,9 @@ t3 = [-6.0451734755080713e-02; -3.9533167111966377e-01; 2.2979640654841407e+00];
 calibration_matrix_3 = [8.7290852997159800e+02 0 9.4445161471037636e+02;
     0 8.7290852997159800e+02 5.6447334036925656e+02;
     0 0 1];
+i3 = R3(1, :);
+j3 = R3(2, :);
+k3 = R3(3, :);
 camPose3 = -inv(R3) * t3;
 
 filelist = readtable('FileList.csv', 'ReadVariableNames', false);
@@ -37,38 +44,71 @@ filelist = filelist.Variables;
 rows =  size(filelist(:,1));
 rows = rows(1);
 
-for a = 1: 2 % change this to rows later
-    u_matrix = zeros(300, 3);
-    v_matrix = zeros(300, 3);
-    for b = 1: 3
-        filename = filelist(a, b);
-        filename = filename{1};
-        baseName = filename(1:find(filename=='.')-1);
-        baseName = strcat(baseName, '.csv');
-        fullfileName = fullfile('C:\Users\Halo3\OneDrive\CS4243\Matlab\Project\CS4243\Annotation\Annotation', baseName); % Change to the folder containing the Annotation files
-        file = readtable(fullfileName, 'ReadVariableNames', false);
-        file = file.Variables;
-        filerows =  size(file(:,1));
-        filerows = filerows(1);
-        
-        for c = 2: filerows
-            u = file(c, 2);
-            if(u{1} == "")
-                continue
-            end
-            u = str2num(u{1});
-            u_matrix(c-1, b) = u;
-            
-            v = file(c, 3);
-            v = str2num(v{1});
-            v_matrix(c-1, b) = v;
-            
-            p = [u v 1];
-            projection = dot(H_1, p);
+for a = 1: rows % change this to rows later
+    
+    file1 = get_files(filelist, a, 1);
+    file2 = get_files(filelist, a, 2);
+    file3 = get_files(filelist, a, 3);
+    filerows =  size(file1(:,1));
+    filerows = filerows(1);
+    
+    validrows = 0;
+    for b = 2: filerows
+        u1 = file1(b, 2);
+        u2 = file2(b, 2);
+        u3 = file3(b, 2);
+        if(u1{1} ~= "" && u2{1} ~= "" && u3{1} ~= "")
+            validrows = validrows + 1;
         end
-        
     end
     
-    w = cat(1, u_matrix, v_matrix);
-    [U, S, V] = svd(w, 0);
+    coords = zeros(validrows, 3);
+    
+    for c = 2: filerows
+        u1 = file1(c, 2);
+        u2 = file2(c, 2);
+        u3 = file3(c, 2);
+        
+        v1 = file1(c, 3);
+        v2 = file2(c, 3);
+        v3 = file3(c, 3);
+        
+        if(u1{1} ~= "" && u2{1} ~= "" && u3{1} ~= "")
+            u1 = str2double(u1{1});
+            u2 = str2double(u2{1});
+            u3 = str2double(u3{1});
+            v1 = str2double(v1{1});
+            v2 = str2double(v2{1});
+            v3 = str2double(v3{1});
+            
+            A = [(u1-calibration_matrix_1(1,3))*k1(1)-1920*i1(1) (u1-calibration_matrix_1(1,3))*k1(2)-1920*i1(2) (u1-calibration_matrix_1(1,3))*k1(3)-1920*i1(3);
+                (u2-calibration_matrix_2(1,3))*k2(1)-1920*i2(1) (u2-calibration_matrix_2(1,3))*k2(2)-1920*i2(2) (u2-calibration_matrix_2(1,3))*k2(3)-1920*i2(3);
+                (u3-calibration_matrix_3(1,3))*k3(1)-1920*i3(1) (u3-calibration_matrix_3(1,3))*k3(2)-1920*i3(2) (u3-calibration_matrix_3(1,3))*k3(3)-1920*i3(3);
+                (v1-calibration_matrix_1(2,3))*k1(1)-1080*i1(1) (v1-calibration_matrix_1(2,3))*k1(2)-1080*i1(2) (v1-calibration_matrix_1(2,3))*k1(3)-1080*i1(3);
+                (v2-calibration_matrix_2(2,3))*k2(1)-1080*i2(1) (v2-calibration_matrix_2(2,3))*k2(2)-1080*i2(2) (v2-calibration_matrix_2(2,3))*k2(3)-1080*i2(3);
+                (v3-calibration_matrix_3(2,3))*k3(1)-1080*i3(1) (v3-calibration_matrix_3(2,3))*k3(2)-1080*i3(2) (v3-calibration_matrix_3(2,3))*k3(3)-1080*i3(3)];
+            
+            B = [(u1-calibration_matrix_1(1,3))*dot(t1, k1)-dot(t1,i1)*1920; (u2-calibration_matrix_2(1,3))*dot(t2, k2)-dot(t2,i2)*1920; (u3-calibration_matrix_3(1,3))*dot(t3, k3)-dot(t3,i3)*1920;
+                (v1-calibration_matrix_1(2,3))*dot(t1, k1)-dot(t1,j1)*1080; (v2-calibration_matrix_2(2,3))*dot(t2, k2)-dot(t2,j2)*1080; (v3-calibration_matrix_3(2,3))*dot(t3, k3)-dot(t3,j3)*1080];
+
+            x = inv(transpose(A) * A)*transpose(A)*B;
+            coords(c-1, :) = x;
+        end
+    end
+    %pcshow(coords, 'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 50);
+    filename = strcat('Trajectories\', int2str(a));
+    filename = strcat(filename, '.csv');
+    csvwrite(filename, coords);
+end
+
+function file = get_files(filelist, row, col)
+
+filename = filelist(row, col);
+filename = filename{1};
+baseName = filename(1:find(filename=='.')-1);
+baseName = strcat(baseName, '.csv');
+fullfileName = fullfile('C:\Users\Halo3\OneDrive\CS4243\Matlab\Project\CS4243\Annotation\Annotation', baseName); % Change to the folder containing the Annotation files
+file = readtable(fullfileName, 'ReadVariableNames', false);
+file = file.Variables;
+
 end
